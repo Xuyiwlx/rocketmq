@@ -172,15 +172,15 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         switch (this.serviceState) {
             case CREATE_JUST:
                 this.serviceState = ServiceState.START_FAILED;
-
+                // 检查 productGroup 是否符合要求；
                 this.checkConfig();
-
+                // 并改变生产者 的 instanceName 为进程 ID
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
-
+                // 创建 MQClientInstance 实例 (单实例)
                 this.mQClientFactory = MQClientManager.getInstance().getAndCreateMQClientInstance(this.defaultMQProducer, rpcHook);
-
+                // 将生产者服务加入组中管理
                 boolean registerOK = mQClientFactory.registerProducer(this.defaultMQProducer.getProducerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -209,7 +209,7 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             default:
                 break;
         }
-
+        // 发送心跳到所有的Broker
         this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();
     }
 
@@ -399,6 +399,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         createTopic(key, newTopic, queueNum, 0);
     }
 
+    /**
+     * 创建主题
+     * @param key 目前未实际作用，可以与 newTopic 相同 。
+     * @param newTopic 主题名称
+     * @param queueNum 队列数量
+     * @param topicSysFlag 主题系统标签，默认为0
+     * @throws MQClientException
+     */
     public void createTopic(String key, String newTopic, int queueNum, int topicSysFlag) throws MQClientException {
         this.makeSureStateOK();
         Validators.checkTopic(newTopic);
@@ -447,6 +455,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         return this.mQClientFactory.getMQAdminImpl().viewMessage(msgId);
     }
 
+    /**
+     * 按主题和关键字查询消息
+     * @param topic 主题
+     * @param key 查询关键字
+     * @param maxNum 本次取得最大数量
+     * @param begin 开始时间
+     * @param end 结束时间
+     */
     public QueryResult queryMessage(String topic, String key, int maxNum, long begin, long end)
         throws MQClientException, InterruptedException {
         this.makeSureStateOK();

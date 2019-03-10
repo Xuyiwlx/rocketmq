@@ -74,16 +74,19 @@ public class NamesrvController {
     }
 
     public boolean initialize() {
-
+        // 加载kv配置，并持久化到硬盘
         this.kvConfigManager.load();
-
+        // 实例化远程通信服务
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
 
+        // 创建Netty业务线程池
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        // 注册业务处理器
         this.registerProcessor();
 
+        // 创建定时任务： NameServer 每隔 10s 扫描一次 Broker ， 移除处于不激活状态的 Broker
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -92,6 +95,7 @@ public class NamesrvController {
             }
         }, 5, 10, TimeUnit.SECONDS);
 
+        // 创建定时任务： namesServer 每隔 10 分钟打印一次 KV 配置 。
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
@@ -100,6 +104,7 @@ public class NamesrvController {
             }
         }, 1, 10, TimeUnit.MINUTES);
 
+        // 监控ssl文件变化并加载（具体也不是很清楚）
         if (TlsSystemConfig.tlsMode != TlsMode.DISABLED) {
             // Register a listener to reload SslContext
             try {
@@ -113,6 +118,7 @@ public class NamesrvController {
                         boolean certChanged, keyChanged = false;
                         @Override
                         public void onChanged(String path) {
+                            //noinspection Duplicates
                             if (path.equals(TlsSystemConfig.tlsServerTrustCertPath)) {
                                 log.info("The trust certificate changed, reload the ssl context");
                                 reloadServerSslContext();

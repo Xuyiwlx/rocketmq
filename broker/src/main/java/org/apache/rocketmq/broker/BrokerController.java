@@ -855,13 +855,16 @@ public class BrokerController {
             this.filterServerManager.start();
         }
 
+        // 注册所有的Broker
         this.registerBrokerAll(true, false, true);
 
+        // 10秒后设定一个定时心跳，每过30秒发送一次心跳
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
             public void run() {
                 try {
+                    // 同步发送心跳包，而非采用oneway方式
                     BrokerController.this.registerBrokerAll(true, false, brokerConfig.isForceRegister());
                 } catch (Throwable e) {
                     log.error("registerBrokerAll Exception", e);
