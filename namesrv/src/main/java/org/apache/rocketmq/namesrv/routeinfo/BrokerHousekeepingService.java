@@ -33,6 +33,7 @@ public class BrokerHousekeepingService implements ChannelEventListener {
 
     @Override
     public void onChannelConnect(String remoteAddr, Channel channel) {
+        log.info("remoteAddr:{} connected to channel {}", remoteAddr, channel);
     }
 
     @Override

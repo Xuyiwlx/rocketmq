@@ -74,7 +74,7 @@ public class NamesrvController {
     }
 
     public boolean initialize() {
-        // 加载kv配置，并持久化到硬盘
+        // 加载kv配置到内存
         this.kvConfigManager.load();
         // 实例化远程通信服务
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);

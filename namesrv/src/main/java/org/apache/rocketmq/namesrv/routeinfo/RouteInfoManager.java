@@ -49,10 +49,25 @@ public class RouteInfoManager {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
     private final static long BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     * Topic 消息队列路由信息，消息发送时根据路由表进行负载均衡 。
+     */
     private final HashMap<String/* topic */, List<QueueData>> topicQueueTable;
+    /**
+     * Broker 基础信息， 包含 brokerName 、 所属集群名称 、 主备 Broker地址 。
+     */
     private final HashMap<String/* brokerName */, BrokerData> brokerAddrTable;
+    /**
+     * Broker 集群信息，存储集群中所有 Broker 名称 。
+     */
     private final HashMap<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    /**
+     * Broker 状态信息 。 NameServer 每次收到心跳包时会替换该信息 。
+     */
     private final HashMap<String/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
+    /**
+     * Broker 上的 FilterServer 列表，用于类模式消息过滤
+     */
     private final HashMap<String/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
 
     public RouteInfoManager() {
@@ -123,17 +138,20 @@ public class RouteInfoManager {
                 // 用set，不会重复
                 brokerNames.add(brokerName);
 
-                // 维护 BrokerData 信息，首先从 brokerAddrTable 根据 BrokerName 尝试获取 Broker 信息
-                // 如果不存在， 则新建BrokerData并放入到 brokerAddrTable , registerFirst 设置为 true ；
-                // 如果存在， 则直接替换原先的， registerFirst 设置为 false，表示非第一次注册 。
+                // 维护 BrokerData 信息
                 boolean registerFirst = false;
 
+                // 首先从 brokerAddrTable 根据 BrokerName 尝试获取 Broker 信息
                 BrokerData brokerData = this.brokerAddrTable.get(brokerName);
+
+                // 如果不存在， 则新建BrokerData并放入到 brokerAddrTable , registerFirst 设置为 true ；
                 if (null == brokerData) {
                     registerFirst = true;
                     brokerData = new BrokerData(clusterName, brokerName, new HashMap<Long, String>());
                     this.brokerAddrTable.put(brokerName, brokerData);
                 }
+
+                // 如果存在， 则直接替换原先的， registerFirst 设置为 false，表示非第一次注册 。
                 String oldAddr = brokerData.getBrokerAddrs().put(brokerId, brokerAddr);
                 registerFirst = registerFirst || (null == oldAddr);
 
