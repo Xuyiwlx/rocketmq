@@ -56,6 +56,7 @@ public class MQFaultStrategy {
     }
 
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
+        // 是否启用Broker 故障延迟机制(默认不启用)
         if (this.sendLatencyFaultEnable) {
             try {
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
@@ -69,7 +70,7 @@ public class MQFaultStrategy {
                             return mq;
                     }
                 }
-
+                // 尝试从规避的 Broker 中选择 个可用的 Broker ，如果没有找到，将返回 null
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
@@ -80,6 +81,7 @@ public class MQFaultStrategy {
                     }
                     return mq;
                 } else {
+                    // 如果没有找到，则从延迟容错中去除
                     latencyFaultTolerance.remove(notBestBroker);
                 }
             } catch (Exception e) {

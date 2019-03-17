@@ -33,16 +33,19 @@ public class LatencyFaultToleranceImpl implements LatencyFaultTolerance<String> 
     public void updateFaultItem(final String name, final long currentLatency, final long notAvailableDuration) {
         FaultItem old = this.faultItemTable.get(name);
         if (null == old) {
+            // 未取得，则创建新的
             final FaultItem faultItem = new FaultItem(name);
             faultItem.setCurrentLatency(currentLatency);
             faultItem.setStartTimestamp(System.currentTimeMillis() + notAvailableDuration);
-
+            // 尝试加入表中，已存在则返回旧值，不存在则加入返回null
             old = this.faultItemTable.putIfAbsent(name, faultItem);
             if (old != null) {
+                // 已存在了，则更新其当前等待时间currentLatency及开始时间戳
                 old.setCurrentLatency(currentLatency);
                 old.setStartTimestamp(System.currentTimeMillis() + notAvailableDuration);
             }
         } else {
+            // 取得，更新其当前等待时间currentLatency及开始时间戳
             old.setCurrentLatency(currentLatency);
             old.setStartTimestamp(System.currentTimeMillis() + notAvailableDuration);
         }

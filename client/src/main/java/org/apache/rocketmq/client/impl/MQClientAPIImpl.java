@@ -318,7 +318,7 @@ public class MQClientAPIImpl {
         }
 
         request.setBody(msg.getBody());
-
+        // 根据发送方式，同步、异步、单向方式进行网络传输
         switch (communicationMode) {
             case ONEWAY:
                 this.remotingClient.invokeOneway(addr, request, timeoutMillis);

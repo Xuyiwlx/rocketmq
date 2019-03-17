@@ -61,7 +61,7 @@ public class ClientConfig {
             sb.append("@");
             sb.append(this.unitName);
         }
-
+        // ip地址@实例名即进程id@单元名(可选)
         return sb.toString();
     }
 
