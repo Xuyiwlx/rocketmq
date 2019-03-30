@@ -46,10 +46,12 @@ import org.apache.rocketmq.remoting.exception.RemotingException;
 
 /**
  * In most scenarios, this is the mostly recommended class to consume messages.
+ * 在大多数情况下，这是最为推荐的用作消息消费的类
  * </p>
  *
  * Technically speaking, this push client is virtually a wrapper of the underlying pull service. Specifically, on
  * arrival of messages pulled from brokers, it roughly invokes the registered callback handler to feed the messages.
+ * 技术上来说，推模式的客户端底层事实上是一个拉服务，具体来说，当从代理中提取的消息到达时，它大致是调用注册的回调处理程序来提供消息。
  * </p>
  *
  * See quickstart/Consumer in the example module for a typical usage.
@@ -65,12 +67,14 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Internal implementation. Most of the functions herein are delegated to it.
+     * 内部实现，此处大多数的只能都委托给他
      */
     protected final transient DefaultMQPushConsumerImpl defaultMQPushConsumerImpl;
 
     /**
      * Consumers of the same role is required to have exactly same subscriptions and consumerGroup to correctly achieve
      * load balance. It's required and needs to be globally unique.
+     * 相同角色的消费这必须要有完全相同的订阅和消费分组才能够正确的实现负载均衡，且必须全局唯一
      * </p>
      *
      * See <a href="http://rocketmq.apache.org/docs/core-concept/">here</a> for further discussion.

@@ -27,11 +27,13 @@ import org.apache.rocketmq.client.exception.MQClientException;
 public interface MQPushConsumer extends MQConsumer {
     /**
      * Start the consumer
+     * 启动消费者
      */
     void start() throws MQClientException;
 
     /**
      * Shutdown the consumer
+     * 关闭消费者
      */
     void shutdown();
 
@@ -49,8 +51,7 @@ public interface MQPushConsumer extends MQConsumer {
      * Subscribe some topic
      *
      * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br> if
-     * null or * expression,meaning subscribe
-     * all
+     * null or * expression,meaning subscribe all
      */
     void subscribe(final String topic, final String subExpression) throws MQClientException;
 
@@ -69,6 +70,7 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Subscribe some topic with selector.
+     * 使用选择器订阅某些主题
      * <p>
      * This interface also has the ability of {@link #subscribe(String, String)},
      * and, support other message selection, such as {@link org.apache.rocketmq.common.filter.ExpressionType#SQL92}.
@@ -80,6 +82,7 @@ public interface MQPushConsumer extends MQConsumer {
      * <p/>
      * <p>
      * Choose SQL92: {@link MessageSelector#bySql(java.lang.String)}
+     * 该接口支持按SQL和Tag进行消息选择
      * </p>
      *
      * @param selector message selector({@link MessageSelector}), can be null.
@@ -88,6 +91,7 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Unsubscribe consumption some topic
+     * 退休消费某些主题
      *
      * @param topic message topic
      */
@@ -95,16 +99,19 @@ public interface MQPushConsumer extends MQConsumer {
 
     /**
      * Update the consumer thread pool size Dynamically
+     * 动态关系消费者线程池
      */
     void updateCorePoolSize(int corePoolSize);
 
     /**
      * Suspend the consumption
+     * 暂停消费
      */
     void suspend();
 
     /**
      * Resume the consumption
+     * 恢复消费
      */
     void resume();
 }

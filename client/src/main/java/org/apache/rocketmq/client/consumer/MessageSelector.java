@@ -32,12 +32,14 @@ import org.apache.rocketmq.common.filter.ExpressionType;
 public class MessageSelector {
 
     /**
+     * 表达式类型
      * @see org.apache.rocketmq.common.filter.ExpressionType
      */
     private String type;
 
     /**
      * expression content.
+     * 表达式内容
      */
     private String expression;
 
@@ -47,7 +49,8 @@ public class MessageSelector {
     }
 
     /**
-     * Use SLQ92 to select message.
+     * Use SQL92 to select message.
+     * 按SQL92语句选择消息
      *
      * @param sql if null or empty, will be treated as select all message.
      */
@@ -57,6 +60,7 @@ public class MessageSelector {
 
     /**
      * Use tag to select message.
+     * 按tag选择消息
      *
      * @param tag if null or empty or "*", will be treated as select all message.
      */
