@@ -175,14 +175,15 @@ public class DefaultMQProducerImpl implements MQProducerInner {
                 // 检查 productGroup 是否符合要求；
                 this.checkConfig();
                 // 并改变生产者 的 instanceName 为进程 ID
-                // 这里可以避免instance未默认值时，同一个物理机器上部署多个应用程序时生成的ClientID相同的问题
+                // 这里可以避免 instanceName 为默认值时，同一个物理机器上部署多个应用程序时生成的ClientID相同的问题
                 if (!this.defaultMQProducer.getProducerGroup().equals(MixAll.CLIENT_INNER_PRODUCER_GROUP)) {
                     this.defaultMQProducer.changeInstanceNameToPID();
                 }
                 // 创建 MQClientInstance 实例
-                // (单实例的MQClientManager管理器维护了一个并发线程安全的缓存表，该表中一个ClientId只会有一个MQClientInstance)
+                // 只存在一个 MQClientManager 实例,维护一个 ConcurrentMap<String/* clientId */, MQClientInstance> 缓存表
+                // 同一个 clientId 只会创建一个 MQClientInstance 实例
                 this.mQClientFactory = MQClientManager.getInstance().getAndCreateMQClientInstance(this.defaultMQProducer, rpcHook);
-                // 将生产者服务加入组中管理
+                // 将当前生产者加入 MQClientInstance 管理
                 boolean registerOK = mQClientFactory.registerProducer(this.defaultMQProducer.getProducerGroup(), this);
                 if (!registerOK) {
                     this.serviceState = ServiceState.CREATE_JUST;
@@ -680,8 +681,8 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     }
 
     /**
-     * 获取主题路由信息
-     * @param topic 主题消息
+     * 获取主题发布信息
+     * @param topic 主题
      * @return 返回主题路由消息
      */
     private TopicPublishInfo tryToFindTopicPublishInfo(final String topic) {

@@ -51,6 +51,7 @@ public class ClientConfig {
 
     private LanguageCode language = LanguageCode.JAVA;
 
+    // 创建 clientId , ip地址@实例名即进程id@单元名(可选)
     public String buildMQClientId() {
         StringBuilder sb = new StringBuilder();
         sb.append(this.getClientIP());
@@ -61,7 +62,6 @@ public class ClientConfig {
             sb.append("@");
             sb.append(this.unitName);
         }
-        // ip地址@实例名即进程id@单元名(可选)
         return sb.toString();
     }
 

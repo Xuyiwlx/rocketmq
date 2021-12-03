@@ -603,7 +603,7 @@ public class MQClientInstance {
                     // 从NameServer获取主题路由数据
                     TopicRouteData topicRouteData;
                     if (isDefault && defaultMQProducer != null) {
-                        // 使用 认主题去查询，如果查询到路由信息，则换路由信息中读写队列个数为消息生产者默认的队列个数（defaultTopicQueueNums ）
+                        // 使用 默认主题去查询，如果查询到路由信息，则换路由信息中读写队列个数为消息生产者默认的队列个数（defaultTopicQueueNums ）
                         topicRouteData = this.mQClientAPIImpl.getDefaultTopicRouteInfoFromNameServer(defaultMQProducer.getCreateTopicKey(),
                             1000 * 3);
                         if (topicRouteData != null) {
@@ -638,7 +638,7 @@ public class MQClientInstance {
                             {
                                 TopicPublishInfo publishInfo = topicRouteData2TopicPublishInfo(topic, topicRouteData);
                                 publishInfo.setHaveTopicRouterInfo(true);
-                                // 为所有的生成关联发布路由信息
+                                // 为所有的生产者关联发布路由信息
                                 Iterator<Entry<String, MQProducerInner>> it = this.producerTable.entrySet().iterator();
                                 while (it.hasNext()) {
                                     Entry<String, MQProducerInner> entry = it.next();
