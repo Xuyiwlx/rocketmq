@@ -22,6 +22,7 @@ import org.apache.rocketmq.client.log.ClientLogger;
 import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.common.message.MessageQueue;
 
+// 消息队列故障策略(延迟实现的门面类)
 public class MQFaultStrategy {
     private final static InternalLogger log = ClientLogger.getLog();
     private final LatencyFaultTolerance<String> latencyFaultTolerance = new LatencyFaultToleranceImpl();
@@ -56,21 +57,25 @@ public class MQFaultStrategy {
     }
 
     public MessageQueue selectOneMessageQueue(final TopicPublishInfo tpInfo, final String lastBrokerName) {
-        // 是否启用Broker 故障延迟机制(默认不启用)
+        // 是否启用 Broker 故障延迟机制(默认不启用)
         if (this.sendLatencyFaultEnable) {
+            // 故障延迟机制启用
             try {
+                // 获取 brokerName = lastBrokerName && 可用的一个消息队列
                 int index = tpInfo.getSendWhichQueue().getAndIncrement();
                 for (int i = 0; i < tpInfo.getMessageQueueList().size(); i++) {
                     int pos = Math.abs(index++) % tpInfo.getMessageQueueList().size();
                     if (pos < 0)
                         pos = 0;
+                    // 轮询获取一个消息队列
                     MessageQueue mq = tpInfo.getMessageQueueList().get(pos);
+                    // 验证该消息队列是否可用
                     if (latencyFaultTolerance.isAvailable(mq.getBrokerName())) {
                         if (null == lastBrokerName || mq.getBrokerName().equals(lastBrokerName))
                             return mq;
                     }
                 }
-                // 尝试从规避的 Broker 中选择 个可用的 Broker ，如果没有找到，将返回 null
+                // 尝试从规避的 Broker 中选择一个可用的 Broker ,如果没有找到,将返回 null
                 final String notBestBroker = latencyFaultTolerance.pickOneAtLeast();
                 int writeQueueNums = tpInfo.getQueueIdByBroker(notBestBroker);
                 if (writeQueueNums > 0) {
@@ -90,10 +95,16 @@ public class MQFaultStrategy {
 
             return tpInfo.selectOneMessageQueue();
         }
-
+        // 故障延迟机制未启用
         return tpInfo.selectOneMessageQueue(lastBrokerName);
     }
 
+    /*
+    * 更新容错条目
+    * @param brokerName brokerName
+    * @param currentLatency 延迟
+    * @param isolation 是否隔离.当开启隔离时,默认延迟为30s,主要用于发送消息异常时
+    * */
     public void updateFaultItem(final String brokerName, final long currentLatency, boolean isolation) {
         if (this.sendLatencyFaultEnable) {
             long duration = computeNotAvailableDuration(isolation ? 30000 : currentLatency);
@@ -101,9 +112,17 @@ public class MQFaultStrategy {
         }
     }
 
+    /*
+    * 计算延迟对应的不可用时长
+    * @param currentLatency 延迟
+    * @return 不可用时长
+    * */
     private long computeNotAvailableDuration(final long currentLatency) {
+        // 从尾部开始循环
         for (int i = latencyMax.length - 1; i >= 0; i--) {
+            // 找到第一个不大于currentLatency的下标
             if (currentLatency >= latencyMax[i])
+                // 获取对应的不可用时长
                 return this.notAvailableDuration[i];
         }
 

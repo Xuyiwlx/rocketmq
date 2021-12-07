@@ -23,11 +23,18 @@ import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.common.protocol.route.QueueData;
 import org.apache.rocketmq.common.protocol.route.TopicRouteData;
 
+// 主题发布信息
 public class TopicPublishInfo {
+    // 是否是顺序消息
     private boolean orderTopic = false;
+    // 是否存在主题路由信息
     private boolean haveTopicRouterInfo = false;
+    // 消息队列
     private List<MessageQueue> messageQueueList = new ArrayList<MessageQueue>();
+    // 每选择一次消息队列,该值会自增1,如果等于Integer.MAX_VALUE,则重置为0
+    // 用于选择消息队列
     private volatile ThreadLocalIndex sendWhichQueue = new ThreadLocalIndex();
+    // 主题路由元数据
     private TopicRouteData topicRouteData;
 
     public boolean isOrderTopic() {
@@ -67,6 +74,7 @@ public class TopicPublishInfo {
     }
 
     public MessageQueue selectOneMessageQueue(final String lastBrokerName) {
+        // 第一次执行时,lastBrokerName为null
         if (lastBrokerName == null) {
             return selectOneMessageQueue();
         } else {
@@ -76,6 +84,7 @@ public class TopicPublishInfo {
                 if (pos < 0)
                     pos = 0;
                 MessageQueue mq = this.messageQueueList.get(pos);
+                // 选择消息队列规避上一次MessageQueue所在的Broker,否则还是有可能再次失败
                 if (!mq.getBrokerName().equals(lastBrokerName)) {
                     return mq;
                 }
@@ -85,7 +94,9 @@ public class TopicPublishInfo {
     }
 
     public MessageQueue selectOneMessageQueue() {
+        // sendWhichQueue 自增再获取的值
         int index = this.sendWhichQueue.getAndIncrement();
+        // 与当前路由表中消息队列个数取模
         int pos = Math.abs(index) % this.messageQueueList.size();
         if (pos < 0)
             pos = 0;

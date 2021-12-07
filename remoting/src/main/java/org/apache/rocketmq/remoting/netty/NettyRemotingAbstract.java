@@ -154,9 +154,11 @@ public abstract class NettyRemotingAbstract {
         final RemotingCommand cmd = msg;
         if (cmd != null) {
             switch (cmd.getType()) {
+                // 请求命令
                 case REQUEST_COMMAND:
                     processRequestCommand(ctx, cmd);
                     break;
+                // 响应命令
                 case RESPONSE_COMMAND:
                     processResponseCommand(ctx, cmd);
                     break;
@@ -190,7 +192,9 @@ public abstract class NettyRemotingAbstract {
      * @param cmd request command.
      */
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
+        // 根据cmd的code从processorTable中获取响应的时间处理器和线程池
         final Pair<NettyRequestProcessor, ExecutorService> matched = this.processorTable.get(cmd.getCode());
+        // 找不到事件处理器,则使用默认的事件处理器(AdminBrokerProcessor)
         final Pair<NettyRequestProcessor, ExecutorService> pair = null == matched ? this.defaultRequestProcessor : matched;
         final int opaque = cmd.getOpaque();
 
@@ -403,9 +407,10 @@ public abstract class NettyRemotingAbstract {
             final ResponseFuture responseFuture = new ResponseFuture(channel, opaque, timeoutMillis, null, null);
             this.responseTable.put(opaque, responseFuture);
             final SocketAddress addr = channel.remoteAddress();
+            // 使用Netty的channel发送请求数据
             channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
                 @Override
-                public void operationComplete(ChannelFuture f) throws Exception {
+                public void operationComplete(ChannelFuture f) throws Exception { // 消息发送后执行
                     if (f.isSuccess()) {
                         responseFuture.setSendRequestOK(true);
                         return;
