@@ -202,10 +202,14 @@ public class MappedFile extends ReferenceResource {
         assert messageExt != null;
         assert cb != null;
 
+        // 获取当前写指针
         int currentPos = this.wrotePosition.get();
 
+        // 小于文件大小
         if (currentPos < this.fileSize) {
+            // 通过slice()创建一个与 mappedFile 的共享内存区域
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
+            // 设置 position 为当前指针
             byteBuffer.position(currentPos);
             AppendMessageResult result = null;
             if (messageExt instanceof MessageExtBrokerInner) {
@@ -219,6 +223,7 @@ public class MappedFile extends ReferenceResource {
             this.storeTimestamp = result.getStoreTimestamp();
             return result;
         }
+        // 大于或等于文件大小,表名文件已写满
         log.error("MappedFile.appendMessage return null, wrotePosition: {} fileSize: {}", currentPos, this.fileSize);
         return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
     }

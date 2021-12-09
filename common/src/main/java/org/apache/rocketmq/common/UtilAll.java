@@ -234,6 +234,7 @@ public class UtilAll {
         return (int) (crc32.getValue() & 0x7FFFFFFF);
     }
 
+    // 字节数组转换成字符串
     public static String bytes2string(byte[] src) {
         char[] hexChars = new char[src.length * 2];
         for (int j = 0; j < src.length; j++) {
@@ -244,6 +245,7 @@ public class UtilAll {
         return new String(hexChars);
     }
 
+    // 字符串转换成字节数组
     public static byte[] string2bytes(String hexString) {
         if (hexString == null || hexString.equals("")) {
             return null;
