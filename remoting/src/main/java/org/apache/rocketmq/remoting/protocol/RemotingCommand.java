@@ -69,17 +69,24 @@ public class RemotingCommand {
         }
     }
 
+    // 请求命令编码,请求命令类型
     private int code;
     private LanguageCode language = LanguageCode.JAVA;
+    // 版本号
     private int version = 0;
+    // 客户端请求号
     private int opaque = requestId.getAndIncrement();
+    // 标记
     private int flag = 0;
+    // 描述
     private String remark;
+    // 扩展属性
     private HashMap<String, String> extFields;
+    // 每个请求对应的请求头信息
     private transient CommandCustomHeader customHeader;
 
     private SerializeType serializeTypeCurrentRPC = serializeTypeConfigInThisServer;
-
+    // 消息体内容
     private transient byte[] body;
 
     protected RemotingCommand() {
@@ -141,20 +148,26 @@ public class RemotingCommand {
         return decode(byteBuffer);
     }
 
+    // 解码过程
     public static RemotingCommand decode(final ByteBuffer byteBuffer) {
+        // 获取 byteBuffer 的总长度
         int length = byteBuffer.limit();
+        // 获取前4个字节,组装成int类型
         int oriHeaderLen = byteBuffer.getInt();
+        // 获取消息头长度
         int headerLength = getHeaderLength(oriHeaderLen);
 
         byte[] headerData = new byte[headerLength];
+        // 消息头数据
         byteBuffer.get(headerData);
 
         RemotingCommand cmd = headerDecode(headerData, getProtocolType(oriHeaderLen));
-
+        // 消息体长度(减去第二、第三部分长度)
         int bodyLength = length - 4 - headerLength;
         byte[] bodyData = null;
         if (bodyLength > 0) {
             bodyData = new byte[bodyLength];
+            // 消息体数据
             byteBuffer.get(bodyData);
         }
         cmd.body = bodyData;
@@ -325,35 +338,50 @@ public class RemotingCommand {
         return name;
     }
 
+
+    /*
+    * 编码过程
+    *
+    * 协议格式:
+    * 消息长度|序列化类型&头部长度|消息头数据|消息体数据
+    *  4字节 |     4字节        |
+    * */
     public ByteBuffer encode() {
         // 1> header length size
+        // 存储序列化类型&头部长度占用的字节数
         int length = 4;
 
         // 2> header data length
+        // 将消息头编码成 byte[]
         byte[] headerData = this.headerEncode();
+        // 加上头部长度
         length += headerData.length;
 
         // 3> body data length
+        // 加上消息体长度
         if (this.body != null) {
             length += body.length;
         }
 
+        // ByteBuffer 分配时,再加4个字节
         ByteBuffer result = ByteBuffer.allocate(4 + length);
 
-        // length
+        // length 消息总长度
         result.putInt(length);
 
-        // header length
+        // header length 序列化类型&&头部长度
+        // 第一个字节表示序列化类型, 后面三个字节表示消息头长度
         result.put(markProtocolType(headerData.length, serializeTypeCurrentRPC));
 
-        // header data
+        // header data 消息头数据
         result.put(headerData);
 
-        // body data;
+        // body data; 消息体数据
         if (this.body != null) {
             result.put(this.body);
         }
 
+        // 重置 ByteBuffer 的 position 位置
         result.flip();
 
         return result;

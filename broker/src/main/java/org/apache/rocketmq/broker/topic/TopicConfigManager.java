@@ -254,6 +254,8 @@ public class TopicConfigManager extends ConfigManager {
                     this.topicConfigTable.put(topic, topicConfig);
                     createNew = true;
                     this.dataVersion.nextVersion();
+                    // 在NameSrv端存储主题的配置信息
+                    // 默认路径: user.home/store/config/topics.json
                     this.persist();
                 } finally {
                     this.lockTopicConfigTable.unlock();

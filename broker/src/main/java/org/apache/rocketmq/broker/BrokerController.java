@@ -307,7 +307,7 @@ public class BrokerController {
             this.consumerManageExecutor =
                 Executors.newFixedThreadPool(this.brokerConfig.getConsumerManageThreadPoolNums(), new ThreadFactoryImpl(
                     "ConsumerManageThread_"));
-
+            // 注册事件处理器
             this.registerProcessor();
 
             final long initialDelay = UtilAll.computNextMorningTimeMillis() - System.currentTimeMillis();
@@ -824,10 +824,13 @@ public class BrokerController {
 
     public void start() throws Exception {
         if (this.messageStore != null) {
+            // 启动消息存储服务,DefaultMessageStore,其会对/store/lock文件加锁
+            // 以确保在broker运行期间只有一个broker实例操作/store目录
             this.messageStore.start();
         }
 
         if (this.remotingServer != null) {
+            // 启动Netty服务器监听10911端口,对外提供服务(消息生产、消费)
             this.remotingServer.start();
         }
 
