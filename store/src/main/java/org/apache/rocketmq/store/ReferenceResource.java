@@ -22,6 +22,7 @@ public abstract class ReferenceResource {
     protected final AtomicLong refCount = new AtomicLong(1);
     protected volatile boolean available = true;
     protected volatile boolean cleanupOver = false;
+    // 初次关闭时间戳
     private volatile long firstShutdownTimestamp = 0;
 
     public synchronized boolean hold() {
@@ -41,19 +42,26 @@ public abstract class ReferenceResource {
     }
 
     public void shutdown(final long intervalForcibly) {
+        // 初次调用时为 true
         if (this.available) {
             this.available = false;
             this.firstShutdownTimestamp = System.currentTimeMillis();
+            // 释放资源
             this.release();
-        } else if (this.getRefCount() > 0) {
+        } else if (this.getRefCount() > 0) { // 引用次数大于0
             if ((System.currentTimeMillis() - this.firstShutdownTimestamp) >= intervalForcibly) {
+                // 每执行一次,将引用次数减少1000
                 this.refCount.set(-1000 - this.getRefCount());
                 this.release();
             }
         }
     }
 
+    /*
+    * 释放资源,前提是引用小于等于0
+    * */
     public void release() {
+        // 引用次数减1
         long value = this.refCount.decrementAndGet();
         if (value > 0)
             return;
@@ -71,6 +79,7 @@ public abstract class ReferenceResource {
     public abstract boolean cleanup(final long currentRef);
 
     public boolean isCleanupOver() {
+        // 引用次数小于等于0 && cleanupOver 为 true
         return this.refCount.get() <= 0 && this.cleanupOver;
     }
 }
