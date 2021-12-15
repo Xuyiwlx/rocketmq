@@ -24,9 +24,19 @@ import org.apache.rocketmq.logging.InternalLogger;
 import org.apache.rocketmq.logging.InternalLoggerFactory;
 import org.apache.rocketmq.store.config.StorePathConfigHelper;
 
+/*
+* 消息消费队列存储文件
+* 可以看成是 CommitLog 关于消息消费的'索引'文件
+* | commitlog offset | size | tag hashcode |
+* |      8字节       | 4字节|    8字节     |
+* 单个 ConsumeQueue 文件默认包含30万个条目,单个文件的长度为30w*20字节
+* 其构建机制是当消息到达 CommitLog 文件后,由专门的线程产生消息转发任务,
+* 从而构建消息消费队列文件和索引文件
+* */
 public class ConsumeQueue {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
 
+    // 单个 ConsumeQueue 条目长度
     public static final int CQ_STORE_UNIT_SIZE = 20;
     private static final InternalLogger LOG_ERROR = InternalLoggerFactory.getLogger(LoggerName.STORE_ERROR_LOGGER_NAME);
 
@@ -151,14 +161,21 @@ public class ConsumeQueue {
         }
     }
 
+    /*
+    * 根据消息存储时间查询消息的偏移量
+    * */
     public long getOffsetInQueueByTime(final long timestamp) {
+        // 根据消息存储时间戳来查找 MappedFile
         MappedFile mappedFile = this.mappedFileQueue.getMappedFileByTime(timestamp);
         if (mappedFile != null) {
+            // 采用二分查找加速检索
             long offset = 0;
+            // 最低偏移量
             int low = minLogicOffset > mappedFile.getFileFromOffset() ? (int) (minLogicOffset - mappedFile.getFileFromOffset()) : 0;
             int high = 0;
             int midOffset = -1, targetOffset = -1, leftOffset = -1, rightOffset = -1;
             long leftIndexValue = -1L, rightIndexValue = -1L;
+            // 获取当前存储文件中有效的最小消息物理偏移量
             long minPhysicOffset = this.defaultMessageStore.getMinPhyOffset();
             SelectMappedBufferResult sbr = mappedFile.selectMappedBuffer(0);
             if (null != sbr) {
@@ -166,28 +183,44 @@ public class ConsumeQueue {
                 high = byteBuffer.limit() - CQ_STORE_UNIT_SIZE;
                 try {
                     while (high >= low) {
+                        // 中间偏移量
                         midOffset = (low + high) / (2 * CQ_STORE_UNIT_SIZE) * CQ_STORE_UNIT_SIZE;
+                        // 将整个 ConsumeQueue 文件对应的 ByteBuffer 定位到 midOffset
                         byteBuffer.position(midOffset);
+                        // 读取8个字节获取消息的物理偏移量
                         long phyOffset = byteBuffer.getLong();
                         int size = byteBuffer.getInt();
+                        // 如果消息的物理偏移量小于当前的最小消息物理偏移量
+                        // 说明待查找的物理偏移量肯定大于midOffset ?
                         if (phyOffset < minPhysicOffset) {
+                            // 将 low 设置为 midOffset ,继续折半查找
                             low = midOffset + CQ_STORE_UNIT_SIZE;
                             leftOffset = midOffset;
                             continue;
                         }
-
+                        // 物理偏移量大于等于当前的最小消息物理偏移量,说明是有效消息
+                        // 根据消息偏移量和消息长度获取消息的存储时间
                         long storeTime =
                             this.defaultMessageStore.getCommitLog().pickupStoreTimestamp(phyOffset, size);
                         if (storeTime < 0) {
+                            // 存储时间小于0,消息为无效消息
+                            // 直接返回0
                             return 0;
                         } else if (storeTime == timestamp) {
+                            // 存储时间等于待查找时间戳
+                            // 说明查找到匹配消息,设置 targetOffset
+                            // 并跳出循环
                             targetOffset = midOffset;
                             break;
                         } else if (storeTime > timestamp) {
+                            // 存储时间大于待查找时间戳
+                            // 说明待查找消息小于 midOffset
                             high = midOffset - CQ_STORE_UNIT_SIZE;
                             rightOffset = midOffset;
                             rightIndexValue = storeTime;
                         } else {
+                            // 存储时间小于待查找时间戳
+                            // 说明待查找消息大于 midOffset
                             low = midOffset + CQ_STORE_UNIT_SIZE;
                             leftOffset = midOffset;
                             leftIndexValue = storeTime;
@@ -195,14 +228,16 @@ public class ConsumeQueue {
                     }
 
                     if (targetOffset != -1) {
-
+                        // 表示找到了存储时间等于待查找时间戳的消息
                         offset = targetOffset;
                     } else {
                         if (leftIndexValue == -1) {
-
+                            // 表示返回的消息比待查找消息时间戳大
+                            // 并且最接近待查找的偏移量
                             offset = rightOffset;
                         } else if (rightIndexValue == -1) {
-
+                            // 表示返回的消息比待查找消息时间戳小
+                            // 并且最接近待查找的偏移量
                             offset = leftOffset;
                         } else {
                             offset =
@@ -482,16 +517,23 @@ public class ConsumeQueue {
         }
     }
 
+    /*
+    * 根据 startIndex 获取消息消费队列条目
+    * */
     public SelectMappedBufferResult getIndexBuffer(final long startIndex) {
         int mappedFileSize = this.mappedFileSize;
+        // 获取在 consumequeue 中的物理偏移量
         long offset = startIndex * CQ_STORE_UNIT_SIZE;
         if (offset >= this.getMinLogicOffset()) {
+            // 根据消息偏移量 offset 查找 mappedFile
             MappedFile mappedFile = this.mappedFileQueue.findMappedFileByOffset(offset);
             if (mappedFile != null) {
                 SelectMappedBufferResult result = mappedFile.selectMappedBuffer((int) (offset % mappedFileSize));
                 return result;
             }
         }
+        // offset < this.getMinLogicOffset()
+        // 返回 null ,说明消息已被删除
         return null;
     }
 
@@ -517,8 +559,10 @@ public class ConsumeQueue {
         this.minLogicOffset = minLogicOffset;
     }
 
+    // 根据当前偏移量获取下一个文件的起始偏移量
     public long rollNextFile(final long index) {
         int mappedFileSize = this.mappedFileSize;
+        // 首先获取一个文件包含多少个消费队列条目
         int totalUnitsInFile = mappedFileSize / CQ_STORE_UNIT_SIZE;
         return index + totalUnitsInFile - index % totalUnitsInFile;
     }

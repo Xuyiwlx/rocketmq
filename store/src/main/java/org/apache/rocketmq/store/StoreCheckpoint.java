@@ -32,8 +32,11 @@ public class StoreCheckpoint {
     private final RandomAccessFile randomAccessFile;
     private final FileChannel fileChannel;
     private final MappedByteBuffer mappedByteBuffer;
+    // CommitLog 刷盘时间点
     private volatile long physicMsgTimestamp = 0;
+    // ConsumerQueue 刷盘时间点
     private volatile long logicsMsgTimestamp = 0;
+    // IndexFile 刷盘时间点
     private volatile long indexMsgTimestamp = 0;
 
     public StoreCheckpoint(final String scpPath) throws IOException {

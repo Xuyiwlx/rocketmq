@@ -20,6 +20,9 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+/*
+* 记录IndexFile的统计信息
+* */
 public class IndexHeader {
     public static final int INDEX_HEADER_SIZE = 40;
     private static int beginTimestampIndex = 0;
@@ -42,12 +45,17 @@ public class IndexHeader {
     }
 
     public void load() {
+        // 该索引文件中包含消息的最小存储时间
         this.beginTimestamp.set(byteBuffer.getLong(beginTimestampIndex));
+        // 该索引文件中包含消息的最大存储时间
         this.endTimestamp.set(byteBuffer.getLong(endTimestampIndex));
+        // 该索引文件中包含消息的最小物理偏移量(commitlog文件偏移量)
         this.beginPhyOffset.set(byteBuffer.getLong(beginPhyoffsetIndex));
+        // 该索引文件中包含消息的最大物理偏移量(commitlog文件偏移量)
         this.endPhyOffset.set(byteBuffer.getLong(endPhyoffsetIndex));
-
+        // hash槽个数,并不是hash槽使用的个数,
         this.hashSlotCount.set(byteBuffer.getInt(hashSlotcountIndex));
+        // Index条目列表当前已使用的个数,Index条目在Index条目列表中按顺序存储
         this.indexCount.set(byteBuffer.getInt(indexCountIndex));
 
         if (this.indexCount.get() <= 0) {
