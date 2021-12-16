@@ -461,10 +461,11 @@ public class ConsumeQueue {
 
         this.byteBufferIndex.flip();
         this.byteBufferIndex.limit(CQ_STORE_UNIT_SIZE);
+        // 依次将消息偏移量、消息长度、tagsCode 写入 ByteBuffer
         this.byteBufferIndex.putLong(offset);
         this.byteBufferIndex.putInt(size);
         this.byteBufferIndex.putLong(tagsCode);
-
+        // 计算 ConsumerQueue 中的物理地址
         final long expectLogicOffset = cqOffset * CQ_STORE_UNIT_SIZE;
 
         MappedFile mappedFile = this.mappedFileQueue.getLastMappedFile(expectLogicOffset);
@@ -500,6 +501,8 @@ public class ConsumeQueue {
                 }
             }
             this.maxPhysicOffset = offset;
+            // 将内容追加到 ConsumerQueue 内存映射文件中(此操作只追加并不刷盘)
+            // ConsumerQueue 的刷盘方式固定为异步刷盘模式
             return mappedFile.appendMessage(this.byteBufferIndex.array());
         }
         return false;

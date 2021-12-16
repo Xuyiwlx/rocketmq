@@ -256,12 +256,16 @@ public class DefaultMessageStore implements MessageStore {
         if (this.scheduleMessageService != null && SLAVE != messageStoreConfig.getBrokerRole()) {
             this.scheduleMessageService.start();
         }
-
+        // 是否允许重复转发
         if (this.getMessageStoreConfig().isDuplicationEnable()) {
+            // 提交指针
             this.reputMessageService.setReputFromOffset(this.commitLog.getConfirmOffset());
         } else {
+            // 最大偏移量
             this.reputMessageService.setReputFromOffset(this.commitLog.getMaxOffset());
         }
+        // 启动 ReputMessageService ,并初始化 reputFromOffset
+        // (即从哪个物理偏移量开始转发消息给 ConsumeQueue 和 IndexFile)
         this.reputMessageService.start();
 
         this.haService.start();
@@ -1116,6 +1120,10 @@ public class DefaultMessageStore implements MessageStore {
         return null;
     }
 
+    /*
+    * 每一个消息主题对应一个消息消费队列目录,然后主题下每一个消息消息队列
+    * 对应一个文件夹,然后取出该文件夹最后的 ConsumeQueue 文件即可
+    * */
     public ConsumeQueue findConsumeQueue(String topic, int queueId) {
         ConcurrentMap<Integer, ConsumeQueue> map = consumeQueueTable.get(topic);
         if (null == map) {
@@ -1413,6 +1421,7 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     public void putMessagePositionInfo(DispatchRequest dispatchRequest) {
+        // 根据消息主题和消息队列ID,获取对应的 ConsumeQueue 文件
         ConsumeQueue cq = this.findConsumeQueue(dispatchRequest.getTopic(), dispatchRequest.getQueueId());
         cq.putMessagePositionInfoWrapper(dispatchRequest);
     }
@@ -1476,6 +1485,7 @@ public class DefaultMessageStore implements MessageStore {
         @Override
         public void dispatch(DispatchRequest request) {
             if (DefaultMessageStore.this.messageStoreConfig.isMessageIndexEnable()) {
+                // 构建索引
                 DefaultMessageStore.this.indexService.buildIndex(request);
             }
         }
@@ -1787,6 +1797,9 @@ public class DefaultMessageStore implements MessageStore {
             return this.reputFromOffset < DefaultMessageStore.this.commitLog.getMaxOffset();
         }
 
+        /*
+        * 消息消费转发的核心实现方法
+        * */
         private void doReput() {
             for (boolean doNext = true; this.isCommitLogAvailable() && doNext; ) {
 
@@ -1794,13 +1807,14 @@ public class DefaultMessageStore implements MessageStore {
                     && this.reputFromOffset >= DefaultMessageStore.this.getConfirmOffset()) {
                     break;
                 }
-
+                // 返回 reputFromOffset 开始的全部有效数据(commitLog)
                 SelectMappedBufferResult result = DefaultMessageStore.this.commitLog.getData(reputFromOffset);
                 if (result != null) {
                     try {
                         this.reputFromOffset = result.getStartOffset();
 
                         for (int readSize = 0; readSize < result.getSize() && doNext; ) {
+                            // 循环读取每一条消息
                             DispatchRequest dispatchRequest =
                                 DefaultMessageStore.this.commitLog.checkMessageAndReturnSize(result.getByteBuffer(), false, false);
                             int size = dispatchRequest.getMsgSize();
@@ -1860,6 +1874,8 @@ public class DefaultMessageStore implements MessageStore {
             DefaultMessageStore.log.info(this.getServiceName() + " service started");
 
             while (!this.isStopped()) {
+                // 每执行一次任务推送,休息1毫秒就继续尝试推送消息到
+                // 消息消费队列文件和索引文件
                 try {
                     Thread.sleep(1);
                     this.doReput();
