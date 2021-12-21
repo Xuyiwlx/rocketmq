@@ -118,15 +118,24 @@ public class MappedFileQueue {
     public void truncateDirtyFiles(long offset) {
         List<MappedFile> willRemoveFiles = new ArrayList<MappedFile>();
 
+        // 遍历目录下的文件
         for (MappedFile file : this.mappedFiles) {
             long fileTailOffset = file.getFileFromOffset() + this.mappedFileSize;
+            // 尾部偏移量大于 offset
             if (fileTailOffset > offset) {
+                // 比较 offset 和 文件的开始偏移量大小
                 if (offset >= file.getFileFromOffset()) {
+                    // offset 大于等于 文件的开始偏移量
+                    // 说明当前文件包含了有效偏移量
                     file.setWrotePosition((int) (offset % this.mappedFileSize));
                     file.setCommittedPosition((int) (offset % this.mappedFileSize));
                     file.setFlushedPosition((int) (offset % this.mappedFileSize));
                 } else {
+                    // offset 小于 文件的开始偏移量
+                    // 说明文件是有效文件后面创建的
+                    // 释放占用的内存资源
                     file.destroy(1000);
+                    // 加入到待删除文件列表中
                     willRemoveFiles.add(file);
                 }
             }
@@ -159,13 +168,17 @@ public class MappedFileQueue {
     }
 
     public boolean load() {
+        // 加载 /user/store/commitlog 或者 /user/store/consumequeue
+        // 目录下所有文件
         File dir = new File(this.storePath);
         File[] files = dir.listFiles();
         if (files != null) {
             // ascending order
+            // 按照文件名排序
             Arrays.sort(files);
             for (File file : files) {
-
+                // 文件大小与配置文件的单个文件大小不一致
+                // 忽略该目录下所有文件
                 if (file.length() != this.mappedFileSize) {
                     log.warn(file + "\t" + file.length()
                         + " length not matched message store config value, ignore it");
@@ -173,8 +186,9 @@ public class MappedFileQueue {
                 }
 
                 try {
+                    // 新建 MappedFile 对象
                     MappedFile mappedFile = new MappedFile(file.getPath(), mappedFileSize);
-
+                    // 设置三个指针大小,为配置文件的单个文件大小
                     mappedFile.setWrotePosition(this.mappedFileSize);
                     mappedFile.setFlushedPosition(this.mappedFileSize);
                     mappedFile.setCommittedPosition(this.mappedFileSize);

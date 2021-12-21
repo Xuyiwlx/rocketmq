@@ -196,30 +196,40 @@ public class DefaultMessageStore implements MessageStore {
 
     /**
      * @throws IOException
+     * 存储文件加载流程
      */
     public boolean load() {
         boolean result = true;
 
         try {
+            // 判断上一次退出是否正常
+            // 实现机制是:Broker 在启动时创建/user/store/abort文件,在退出时
+            // 通过注册 JVM 钩子函数删除 abort 文件,如果下一次启动时存在 abort 文件
+            // 说明是Broker是异常退出的
             boolean lastExitOK = !this.isTempFileExist();
             log.info("last shutdown {}", lastExitOK ? "normally" : "abnormally");
 
             if (null != scheduleMessageService) {
+                // 加载延迟队列,RocketMQ 定时消息相关
                 result = result && this.scheduleMessageService.load();
             }
 
             // load Commit Log
+            // 加载 CommitLog 文件
             result = result && this.commitLog.load();
 
             // load Consume Queue
+            // 加载消息消费队列
             result = result && this.loadConsumeQueue();
 
             if (result) {
+                // 加载存储检测点
+                // 检测点主要记录CommitLog、ConsumerQueue、IndexFile刷盘时间点
                 this.storeCheckpoint =
                     new StoreCheckpoint(StorePathConfigHelper.getStoreCheckpoint(this.messageStoreConfig.getStorePathRootDir()));
-
+                // 加载索引文件
                 this.indexService.load(lastExitOK);
-
+                // 文件恢复
                 this.recover(lastExitOK);
 
                 log.info("load over, and the max phy offset = {}", this.getMaxPhyOffset());
@@ -1287,15 +1297,18 @@ public class DefaultMessageStore implements MessageStore {
     }
 
     private boolean loadConsumeQueue() {
+        // 遍历消息消费队列根目录
         File dirLogic = new File(StorePathConfigHelper.getStorePathConsumeQueue(this.messageStoreConfig.getStorePathRootDir()));
+        // 获取该 Broker 存储的所有主题
         File[] fileTopicList = dirLogic.listFiles();
         if (fileTopicList != null) {
-
+            // 遍历每个主题目录
             for (File fileTopic : fileTopicList) {
                 String topic = fileTopic.getName();
-
+                // 获取该主题下的所有消息消费队列
                 File[] fileQueueIdList = fileTopic.listFiles();
                 if (fileQueueIdList != null) {
+                    // 分别加载每个消息消费队列下的文件
                     for (File fileQueueId : fileQueueIdList) {
                         int queueId;
                         try {
@@ -1303,6 +1316,7 @@ public class DefaultMessageStore implements MessageStore {
                         } catch (NumberFormatException e) {
                             continue;
                         }
+                        // 构建 ConsumeQueue 对象
                         ConsumeQueue logic = new ConsumeQueue(
                             topic,
                             queueId,
@@ -1323,15 +1337,19 @@ public class DefaultMessageStore implements MessageStore {
         return true;
     }
 
+    // 根据 Broker 是否正常停止执行不同的恢复策略
     private void recover(final boolean lastExitOK) {
+        // 恢复 ConsumeQueue 文件
         long maxPhyOffsetOfConsumeQueue = this.recoverConsumeQueue();
 
         if (lastExitOK) {
+            // 正常停止文件恢复
             this.commitLog.recoverNormally(maxPhyOffsetOfConsumeQueue);
         } else {
+            // 异常停止文件恢复
             this.commitLog.recoverAbnormally(maxPhyOffsetOfConsumeQueue);
         }
-
+        // 在 CommitLog 中保存每个消息消费队列当前的存储逻辑偏移量
         this.recoverTopicQueueTable();
     }
 
