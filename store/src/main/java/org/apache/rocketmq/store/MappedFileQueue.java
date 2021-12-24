@@ -368,6 +368,7 @@ public class MappedFileQueue {
         final int deleteFilesInterval,
         final long intervalForcibly,
         final boolean cleanImmediately) {
+        // 文件可能随时有写入,copy一份不影响写入
         Object[] mfs = this.copyMappedFiles(0);
 
         if (null == mfs)
@@ -377,11 +378,16 @@ public class MappedFileQueue {
         int deleteCount = 0;
         List<MappedFile> files = new ArrayList<MappedFile>();
         if (null != mfs) {
+            // 遍历文件(第一个到倒数第二个)
             for (int i = 0; i < mfsLength; i++) {
                 MappedFile mappedFile = (MappedFile) mfs[i];
+                // 计算文件最大存活时间 = 文件的最后一次更新时间 + 文件存活时间(默认72小时)
                 long liveMaxTimestamp = mappedFile.getLastModifiedTimestamp() + expiredTime;
+                // 当前时间大于文件最大存活时间 || 需要强制删除文件
                 if (System.currentTimeMillis() >= liveMaxTimestamp || cleanImmediately) {
+                    // 销毁 mappedFile
                     if (mappedFile.destroy(intervalForcibly)) {
+                        // 加入待删除文件列表
                         files.add(mappedFile);
                         deleteCount++;
 

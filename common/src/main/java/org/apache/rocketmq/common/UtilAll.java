@@ -204,10 +204,11 @@ public class UtilAll {
 
             if (!file.exists())
                 return -1;
-
+            // 获取文件所在磁盘分区的总容量
             long totalSpace = file.getTotalSpace();
 
             if (totalSpace > 0) {
+                // 获取文件所在磁盘分区的剩余容量
                 long freeSpace = file.getFreeSpace();
                 long usedSpace = totalSpace - freeSpace;
 
