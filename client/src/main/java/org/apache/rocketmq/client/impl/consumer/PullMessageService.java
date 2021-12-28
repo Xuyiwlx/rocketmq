@@ -43,6 +43,9 @@ public class PullMessageService extends ServiceThread {
         this.mQClientFactory = mQClientFactory;
     }
 
+    /*
+    * 延迟添加 pullRequest
+    * */
     public void executePullRequestLater(final PullRequest pullRequest, final long timeDelay) {
         if (!isStopped()) {
             this.scheduledExecutorService.schedule(new Runnable() {
@@ -56,6 +59,9 @@ public class PullMessageService extends ServiceThread {
         }
     }
 
+    /*
+    * 立即添加 pullRequest
+    * */
     public void executePullRequestImmediately(final PullRequest pullRequest) {
         try {
             this.pullRequestQueue.put(pullRequest);
@@ -77,8 +83,10 @@ public class PullMessageService extends ServiceThread {
     }
 
     private void pullMessage(final PullRequest pullRequest) {
+        // 根据消费者组名从 MQClientInstance 获取消费者内部实现类
         final MQConsumerInner consumer = this.mQClientFactory.selectConsumer(pullRequest.getConsumerGroup());
         if (consumer != null) {
+            // 强转为 DefaultMQPushConsumerImpl ,表示该服务只为 PUSH 模式服务
             DefaultMQPushConsumerImpl impl = (DefaultMQPushConsumerImpl) consumer;
             impl.pullMessage(pullRequest);
         } else {
@@ -90,9 +98,14 @@ public class PullMessageService extends ServiceThread {
     public void run() {
         log.info(this.getServiceName() + " service started");
 
+        // 通用的设计技巧, stopped 声明为 volatile .每执行一次业务逻辑检测
+        // 一下其运行状态,可以通过其他线程将 stopped 设置为true ,从而停止该线程
         while (!this.isStopped()) {
             try {
+                // 获取消息拉取任务
+                // 如果 pullRequestQueue 为空,则线程将阻塞,直到有拉取任务被放入
                 PullRequest pullRequest = this.pullRequestQueue.take();
+                // 拉取消息
                 this.pullMessage(pullRequest);
             } catch (InterruptedException ignored) {
             } catch (Exception e) {

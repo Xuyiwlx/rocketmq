@@ -67,15 +67,26 @@ public class PullAPIWrapper {
         this.unitMode = unitMode;
     }
 
+    /*
+    * 处理拉取结果
+    * 1.更新消息队列拉取消息BrokerId的映射
+    * 2.解析消息,并根据订阅信息消息tagCode匹配合适消息
+    * @param mq 消息队列
+    * @param pullRequest 拉取结果
+    * @param subscriptionData 订阅信息
+    * */
     public PullResult processPullResult(final MessageQueue mq, final PullResult pullResult,
         final SubscriptionData subscriptionData) {
         PullResultExt pullResultExt = (PullResultExt) pullResult;
 
+        // 更新消息队列拉取消息BrokerId的映射
         this.updatePullFromWhichNode(mq, pullResultExt.getSuggestWhichBrokerId());
         if (PullStatus.FOUND == pullResult.getPullStatus()) {
+            // 解析消息
             ByteBuffer byteBuffer = ByteBuffer.wrap(pullResultExt.getMessageBinary());
             List<MessageExt> msgList = MessageDecoder.decodes(byteBuffer);
 
+            // 根据订阅信息消息tagCode匹配合适消息
             List<MessageExt> msgListFilterAgain = msgList;
             if (!subscriptionData.getTagsSet().isEmpty() && !subscriptionData.isClassFilterMode()) {
                 msgListFilterAgain = new ArrayList<MessageExt>(msgList.size());
@@ -95,6 +106,7 @@ public class PullAPIWrapper {
                 this.executeHook(filterMessageContext);
             }
 
+            // 设置消息队列当前最小/最大位置到消息拓展字段
             for (MessageExt msg : msgListFilterAgain) {
                 String traFlag = msg.getProperty(MessageConst.PROPERTY_TRANSACTION_PREPARED);
                 if (traFlag != null && Boolean.parseBoolean(traFlag)) {
@@ -105,10 +117,11 @@ public class PullAPIWrapper {
                 MessageAccessor.putProperty(msg, MessageConst.PROPERTY_MAX_OFFSET,
                     Long.toString(pullResult.getMaxOffset()));
             }
-
+            // 设置消息列表
             pullResultExt.setMsgFoundList(msgListFilterAgain);
         }
 
+        // 清空消息二进制数组
         pullResultExt.setMessageBinary(null);
 
         return pullResult;
@@ -139,6 +152,17 @@ public class PullAPIWrapper {
         }
     }
 
+    /*
+    * @param mq 从哪个消息消费队列拉取消息
+    * @param subExpression 消息过滤表达式
+    * @param expressionType 消息表达式类型
+    * @param offset 消息拉取偏移量
+    * @param maxNums 本次拉取最大消息条数,默认32条
+    * @param sysFlag 消息拉取系统标记
+    * @param commitOffset 当前 MessageQueue 的消费进度(内存中)
+    * @param brokerSuspendMaxTimeMillis 消息拉取过程中允许 Broker 挂起时间,默认15s
+    * @param pullCallback 从 Broker 拉取到消息后的回调方法
+    * */
     public PullResult pullKernelImpl(
         final MessageQueue mq,
         final String subExpression,
@@ -153,6 +177,7 @@ public class PullAPIWrapper {
         final CommunicationMode communicationMode,
         final PullCallback pullCallback
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
+        // 根据 brokerName、brokerId 从 MQClientInstance 中获取 Broker 地址
         FindBrokerResult findBrokerResult =
             this.mQClientFactory.findBrokerAddressInSubscribe(mq.getBrokerName(),
                 this.recalculatePullFromWhichNode(mq), false);
@@ -191,8 +216,12 @@ public class PullAPIWrapper {
             requestHeader.setSubVersion(subVersion);
             requestHeader.setExpressionType(expressionType);
 
+            // broker 地址
             String brokerAddr = findBrokerResult.getBrokerAddr();
             if (PullSysFlag.hasClassFilterFlag(sysFlagInner)) {
+                // 如果消息过滤模式为类模式
+                // 则根据主题名称、broker地址找到注册在 Broker 上的 FilterServer 地址
+                // 从 FilterServer 上拉取消息
                 brokerAddr = computPullFromWhichFilterServer(mq.getTopic(), brokerAddr);
             }
 
