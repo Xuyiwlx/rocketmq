@@ -192,7 +192,7 @@ public abstract class NettyRemotingAbstract {
      * @param cmd request command.
      */
     public void processRequestCommand(final ChannelHandlerContext ctx, final RemotingCommand cmd) {
-        // 根据cmd的code从processorTable中获取响应的时间处理器和线程池
+        // 根据cmd的code从processorTable中获取响应的事件处理器和线程池
         final Pair<NettyRequestProcessor, ExecutorService> matched = this.processorTable.get(cmd.getCode());
         // 找不到事件处理器,则使用默认的事件处理器(AdminBrokerProcessor)
         final Pair<NettyRequestProcessor, ExecutorService> pair = null == matched ? this.defaultRequestProcessor : matched;

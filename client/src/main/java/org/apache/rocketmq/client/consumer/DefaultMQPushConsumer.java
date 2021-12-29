@@ -142,7 +142,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * 根据消息进度从消息服务器拉取不到消息时重新计算消费策略
      * CONSUME_FROM_LAST_OFFSET : 从队列当前最大偏移量开始消费
      * CONSUME_FROM_FIRST_OFFSET : 从队列当前最小偏移量开始消费
-     * CONSUME_FROM_TIMESTAMP : 从消费者启动时间戳开始消费
+     * CONSUME_FROM_TIMESTAMP : 从指定的时间戳开始消费
      * 注意:如果消息进度服务 OffsetStore 读取到 MessageQueue 中的偏移量不小于0,则使用读取到的偏移量;
      * 只有在读到的偏移量小于0时,上述策略才会生效
      */
@@ -155,7 +155,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
      * <br>
      * Implying Seventeen twelve and 01 seconds on December 23, 2013 year<br>
      * Default backtracking consumption time Half an hour ago.
-     * 默认回溯消费时间为半年前
+     * 默认回溯消费时间为半小时前
      */
     private String consumeTimestamp = UtilAll.timeMillisToHumanString3(System.currentTimeMillis() - (1000 * 60 * 30));
 

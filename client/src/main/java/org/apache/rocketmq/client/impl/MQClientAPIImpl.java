@@ -739,11 +739,11 @@ public class MQClientAPIImpl {
             request, timeoutMillis);
         assert response != null;
         switch (response.getCode()) {
-            case ResponseCode.SUCCESS: {
+            case ResponseCode.SUCCESS: { // 成功
                 if (response.getBody() != null) {
                     GetConsumerListByGroupResponseBody body =
                         GetConsumerListByGroupResponseBody.decode(response.getBody(), GetConsumerListByGroupResponseBody.class);
-                    return body.getConsumerIdList();
+                    return body.getConsumerIdList(); // 返回消费者ID列表
                 }
             }
             default:

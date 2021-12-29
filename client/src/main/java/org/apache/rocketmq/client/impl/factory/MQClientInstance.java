@@ -974,10 +974,12 @@ public class MQClientInstance {
     }
 
     public void doRebalance() {
+        // 遍历已注册的消费者
         for (Map.Entry<String, MQConsumerInner> entry : this.consumerTable.entrySet()) {
             MQConsumerInner impl = entry.getValue();
             if (impl != null) {
                 try {
+                    // 执行方法
                     impl.doRebalance();
                 } catch (Throwable e) {
                     log.error("doRebalance exception", e);
@@ -1103,6 +1105,9 @@ public class MQClientInstance {
         return null;
     }
 
+    /*
+    * 从主题路由信息表中随机选择一个 broker
+    * */
     public String findBrokerAddrByTopic(final String topic) {
         TopicRouteData topicRouteData = this.topicRouteTable.get(topic);
         if (topicRouteData != null) {
