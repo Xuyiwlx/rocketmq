@@ -214,7 +214,7 @@ public class ProcessQueue {
     }
 
     /*
-    * 移除消息
+    * 移除消息,并返回第一条消息位置
     * */
     public long removeMessage(final List<MessageExt> msgs) {
         long result = -1;

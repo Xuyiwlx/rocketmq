@@ -939,6 +939,16 @@ public class MQClientAPIImpl {
         return response.getCode() == ResponseCode.SUCCESS;
     }
 
+    /*
+    * 发回消息
+    * @param addr broker 地址
+    * @param msg 消息
+    * @param consumerGroup 消费者组
+    * @param delayLevel 延迟级别
+    * @param timeoutMillis 超时
+    * @param maxConsumeRetryTimes 最大消费重试次数
+    *
+    * */
     public void consumerSendMessageBack(
         final String addr,
         final MessageExt msg,
@@ -956,7 +966,7 @@ public class MQClientAPIImpl {
         requestHeader.setDelayLevel(delayLevel);
         requestHeader.setOriginMsgId(msg.getMsgId());
         requestHeader.setMaxReconsumeTimes(maxConsumeRetryTimes);
-
+        // 客户端以同步方式发送 request 到服务端
         RemotingCommand response = this.remotingClient.invokeSync(MixAll.brokerVIPChannel(this.clientConfig.isVipChannelEnabled(), addr),
             request, timeoutMillis);
         assert response != null;
