@@ -42,6 +42,7 @@ import org.apache.rocketmq.common.protocol.body.ProcessQueueInfo;
 public class ProcessQueue {
     public final static long REBALANCE_LOCK_MAX_LIVE_TIME =
         Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockMaxLiveTime", "30000"));
+    // 建议与一次消息负载频率设置相同
     public final static long REBALANCE_LOCK_INTERVAL = Long.parseLong(System.getProperty("rocketmq.client.rebalance.lockInterval", "20000"));
     private final static long PULL_MAX_IDLE_TIME = Long.parseLong(System.getProperty("rocketmq.client.pull.pullMaxIdleTime", "120000"));
     private final InternalLogger log = ClientLogger.getLog();
@@ -296,17 +297,25 @@ public class ProcessQueue {
     }
 
     /*
-    * 清除 consumingMsgOrderlyTreeMap 中的消息, 表示成功处理该批消息
+    * 提交
+    * 清除 consumingMsgOrderlyTreeMap 中的消息
+    * 维护 msgCount ,并返回待保存的消息消费进度
+    * 表示成功处理该批消息
     * */
     public long commit() {
         try {
             this.lockTreeMap.writeLock().lockInterruptibly();
             try {
+                // 消息消费队列的逻辑偏移量
+                // 类似于数组的下标,代表第n个 ConsumeQueue 条目
                 Long offset = this.consumingMsgOrderlyTreeMap.lastKey();
+                // 维护 msgCount
                 msgCount.addAndGet(0 - this.consumingMsgOrderlyTreeMap.size());
                 for (MessageExt msg : this.consumingMsgOrderlyTreeMap.values()) {
+                    // 维护 msgSize
                     msgSize.addAndGet(0 - msg.getBody().length);
                 }
+                // 移除消息
                 this.consumingMsgOrderlyTreeMap.clear();
                 if (offset != null) {
                     return offset + 1;
@@ -329,7 +338,9 @@ public class ProcessQueue {
             this.lockTreeMap.writeLock().lockInterruptibly();
             try {
                 for (MessageExt msg : msgs) {
+                    // 清除 consumingMsgOrderlyTreeMap
                     this.consumingMsgOrderlyTreeMap.remove(msg.getQueueOffset());
+                    // 将消息重新放入到 msgTreeMap
                     this.msgTreeMap.put(msg.getQueueOffset(), msg);
                 }
             } finally {
@@ -355,6 +366,7 @@ public class ProcessQueue {
                         Map.Entry<Long, MessageExt> entry = this.msgTreeMap.pollFirstEntry();
                         if (entry != null) {
                             result.add(entry.getValue());
+                            // 取出的消息会临时存储在 consumingMsgOrderlyTreeMap 中
                             consumingMsgOrderlyTreeMap.put(entry.getKey(), entry.getValue());
                         } else {
                             break;

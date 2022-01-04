@@ -118,6 +118,10 @@ public abstract class RebalanceImpl {
         }
     }
 
+    /*
+    * 将消息队列按照 brokerName 组装成Map
+    * 方便下一步向 Broker 发送锁定消息队列请求
+    * */
     private HashMap<String/* brokerName */, Set<MessageQueue>> buildProcessQueueTableByBrokerName() {
         HashMap<String, Set<MessageQueue>> result = new HashMap<String, Set<MessageQueue>>();
         for (MessageQueue mq : this.processQueueTable.keySet()) {
@@ -186,24 +190,31 @@ public abstract class RebalanceImpl {
                 requestBody.setMqSet(mqs);
 
                 try {
+                    // 向 Broker(Master主节点) 发送锁定消息消费队列的请求
+                    // 返回成功被当前消费者锁定的消息消费队列
                     Set<MessageQueue> lockOKMQSet =
                         this.mQClientFactory.getMQClientAPIImpl().lockBatchMQ(findBrokerResult.getBrokerAddr(), requestBody, 1000);
 
+                    // 遍历 lockOKMQSet
                     for (MessageQueue mq : lockOKMQSet) {
                         ProcessQueue processQueue = this.processQueueTable.get(mq);
                         if (processQueue != null) {
                             if (!processQueue.isLocked()) {
                                 log.info("the message queue locked OK, Group: {} {}", this.consumerGroup, mq);
                             }
-
+                            // 将相应的处理队列设置为锁定状态
+                            // 同时更新加锁时间
                             processQueue.setLocked(true);
                             processQueue.setLastLockTimestamp(System.currentTimeMillis());
                         }
                     }
+                    // 遍历 mqs
                     for (MessageQueue mq : mqs) {
-                        if (!lockOKMQSet.contains(mq)) {
+                        if (!lockOKMQSet.contains(mq)) { // 当前消费者不持有该消息队列的锁
                             ProcessQueue processQueue = this.processQueueTable.get(mq);
                             if (processQueue != null) {
+                                // 将相应的处理队列设置为非锁定状态
+                                // 暂停该消息消费队列的消息拉取和消息消费
                                 processQueue.setLocked(false);
                                 log.warn("the message queue locked Failed, Group: {} {}", this.consumerGroup, mq);
                             }
@@ -393,6 +404,7 @@ public abstract class RebalanceImpl {
         List<PullRequest> pullRequestList = new ArrayList<PullRequest>();
         for (MessageQueue mq : mqSet) {
             if (!this.processQueueTable.containsKey(mq)) {
+                // 顺序消息 && 对消息队列上锁
                 if (isOrder && !this.lock(mq)) {
                     log.warn("doRebalance, {}, add a new mq failed, {}, because lock failed", consumerGroup, mq);
                     continue;

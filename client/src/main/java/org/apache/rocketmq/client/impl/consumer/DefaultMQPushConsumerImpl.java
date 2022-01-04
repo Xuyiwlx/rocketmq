@@ -255,7 +255,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
             return;
         }
 
-        if (!this.consumeOrderly) {
+        if (!this.consumeOrderly) { // 并发消息消费
             // 当前消息最大间隔(最大偏移量与最小偏移量的间距)
             // 主要的考量是担心一条消息堵塞,消息进度无法向前推进
             // 可能造成大量消息重复消费
@@ -272,9 +272,10 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                 // 结束本次消息拉取
                 return;
             }
-        } else {
-            if (processQueue.isLocked()) {
+        } else { // 顺序消息消费
+            if (processQueue.isLocked()) { // 消息处理队列被锁定
                 if (!pullRequest.isLockedFirst()) {
+                    // 第一次上锁,设置拉取偏移量
                     final long offset = this.rebalanceImpl.computePullFromWhere(pullRequest.getMessageQueue());
                     boolean brokerBusy = offset < pullRequest.getNextOffset();
                     log.info("the first time to pull message, so fix offset from broker. pullRequest: {} NewOffset: {} brokerBusy: {}",
@@ -287,7 +288,8 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
                     pullRequest.setLockedFirst(true);
                     pullRequest.setNextOffset(offset);
                 }
-            } else {
+            } else { // 消息处理队列未被锁定
+                // 延迟3s后,再将pullRequest对象放入到拉取请求队列中
                 this.executePullRequestLater(pullRequest, PULL_TIME_DELAY_MILLS_WHEN_EXCEPTION);
                 log.info("pull message later because not locked in broker, {}", pullRequest);
                 return;
