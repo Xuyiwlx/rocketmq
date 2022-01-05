@@ -303,7 +303,7 @@ public class MQClientInstance {
             }
         }, 1000, this.clientConfig.getHeartbeatBrokerInterval(), TimeUnit.MILLISECONDS);
 
-        // 每隔5秒进行一次消费者检测
+        // 每隔5秒进行一次消费者进度持久化
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
 
             @Override
