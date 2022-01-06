@@ -25,6 +25,7 @@ public class FilterServerUtil {
         Process process = null;
         try {
             String[] cmdArray = splitShellString(shellString);
+            // 直接执行shell脚本
             process = Runtime.getRuntime().exec(cmdArray);
             process.waitFor();
             log.info("CallShell: <{}> OK", shellString);

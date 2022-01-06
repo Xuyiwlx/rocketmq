@@ -64,15 +64,22 @@ public class FilterServerManager {
         }, 1000 * 5, 1000 * 30, TimeUnit.MILLISECONDS);
     }
 
+    /*
+    * 创建 FilterServer
+    * */
     public void createFilterServer() {
+        // 读取配置文件中的属性 filterServerNums
         int more =
             this.brokerController.getBrokerConfig().getFilterServerNums() - this.filterServerTable.size();
         String cmd = this.buildStartCommand();
+        // more > 0 (当前运行的 filterServer 数量小于 filterServerNums)
         for (int i = 0; i < more; i++) {
+            // 构建 shell 命令并调用
             FilterServerUtil.callShell(cmd, log);
         }
     }
 
+    // 构建启动命令
     private String buildStartCommand() {
         String config = "";
         if (BrokerStartup.configFile != null) {
@@ -99,6 +106,7 @@ public class FilterServerManager {
     }
 
     public void registerFilterServer(final Channel channel, final String filterServerAddr) {
+        // 获取 filterServerInfo
         FilterServerInfo filterServerInfo = this.filterServerTable.get(channel);
         if (filterServerInfo != null) {
             filterServerInfo.setLastUpdateTimestamp(System.currentTimeMillis());
@@ -145,7 +153,9 @@ public class FilterServerManager {
     }
 
     static class FilterServerInfo {
+        // filterServer 地址
         private String filterServerAddr;
+        // 上次发送心跳包时间
         private long lastUpdateTimestamp;
 
         public String getFilterServerAddr() {

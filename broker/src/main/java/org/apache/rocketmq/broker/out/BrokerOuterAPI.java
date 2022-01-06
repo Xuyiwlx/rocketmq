@@ -111,6 +111,10 @@ public class BrokerOuterAPI {
         this.remotingClient.updateNameServerAddressList(lst);
     }
 
+    /*
+    * 发送心跳包,包含集群名称、broker地址、broker名称、brokerId
+    * haServer地址、topic配置、过滤服务器列表
+    * */
     public List<RegisterBrokerResult> registerBrokerAll(
         final String clusterName,
         final String brokerAddr,
