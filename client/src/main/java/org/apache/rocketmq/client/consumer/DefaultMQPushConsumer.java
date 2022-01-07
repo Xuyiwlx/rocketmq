@@ -696,7 +696,7 @@ public class DefaultMQPushConsumer extends ClientConfig implements MQPushConsume
 
     /**
      * Subscribe a topic to consuming subscription.
-     * 基于主题订阅消息
+     * 基于主题订阅消息,消息过滤方式使用表达式
      * @param topic topic to subscribe. 消息主题
      * @param subExpression subscription expression.it only support or operation such as "tag1 || tag2 || tag3" <br>
      * if null or * expression,meaning subscribe all 消息过滤表达式

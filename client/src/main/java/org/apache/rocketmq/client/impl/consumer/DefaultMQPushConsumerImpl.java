@@ -920,7 +920,7 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
     }
 
     /*
-    * 消费者订阅消息主题和消息过滤表达式
+    * 消费者订阅消息(基于主题和消息过滤表达式)
     * */
     public void subscribe(String topic, String subExpression) throws MQClientException {
         try {
@@ -937,13 +937,18 @@ public class DefaultMQPushConsumerImpl implements MQConsumerInner {
         }
     }
 
+    /*
+    * 消费者订阅消息(基于主题和类模式消息过滤)
+    * */
     public void subscribe(String topic, String fullClassName, String filterClassSource) throws MQClientException {
         try {
+            // 构建订阅信息
             SubscriptionData subscriptionData = FilterAPI.buildSubscriptionData(this.defaultMQPushConsumer.getConsumerGroup(),
                 topic, "*");
             subscriptionData.setSubString(fullClassName);
             subscriptionData.setClassFilterMode(true);
             subscriptionData.setFilterClassSource(filterClassSource);
+            // 加入到 rebalanceImpl,以便进行消息队列负载
             this.rebalanceImpl.getSubscriptionInner().put(topic, subscriptionData);
             if (this.mQClientFactory != null) {
                 this.mQClientFactory.sendHeartbeatToAllBrokerWithLock();

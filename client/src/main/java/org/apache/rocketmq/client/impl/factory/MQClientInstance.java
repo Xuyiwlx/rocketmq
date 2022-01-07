@@ -461,6 +461,7 @@ public class MQClientInstance {
         if (this.lockHeartbeat.tryLock()) {
             try {
                 this.sendHeartbeatToAllBroker();
+                // 上传过滤类源码
                 this.uploadFilterClassSource();
             } catch (final Exception e) {
                 log.error("sendHeartbeatToAllBroker exception", e);
@@ -761,15 +762,19 @@ public class MQClientInstance {
                 RemotingHelper.exceptionSimpleDesc(e1));
         }
 
+        // 获取路由信息
         TopicRouteData topicRouteData = this.topicRouteTable.get(topic);
+        // filterServerTable 不为空
         if (topicRouteData != null
             && topicRouteData.getFilterServerTable() != null && !topicRouteData.getFilterServerTable().isEmpty()) {
             Iterator<Entry<String, List<String>>> it = topicRouteData.getFilterServerTable().entrySet().iterator();
             while (it.hasNext()) {
                 Entry<String, List<String>> next = it.next();
                 List<String> value = next.getValue();
+                // 遍历
                 for (final String fsAddr : value) {
                     try {
+                        // 上传消息过滤代码
                         this.mQClientAPIImpl.registerMessageFilterClass(fsAddr, consumerGroup, topic, fullClassName, classCRC, classBody,
                             5000);
 

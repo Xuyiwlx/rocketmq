@@ -255,10 +255,13 @@ public class PullAPIWrapper {
         throws MQClientException {
         ConcurrentMap<String, TopicRouteData> topicRouteTable = this.mQClientFactory.getTopicRouteTable();
         if (topicRouteTable != null) {
+            // 获取路由信息
             TopicRouteData topicRouteData = topicRouteTable.get(topic);
+            // 获取broker对应的 filterServer 列表
             List<String> list = topicRouteData.getFilterServerTable().get(brokerAddr);
 
             if (list != null && !list.isEmpty()) {
+                // 不为空,随机选一个
                 return list.get(randomNum() % list.size());
             }
         }
