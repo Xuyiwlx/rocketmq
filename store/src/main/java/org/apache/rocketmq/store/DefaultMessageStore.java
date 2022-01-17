@@ -515,7 +515,7 @@ public class DefaultMessageStore implements MessageStore {
 
         GetMessageResult getResult = new GetMessageResult();
 
-        // 当前 commitLog 文件最大偏移量
+        // 当前主服务器 commitLog 文件最大偏移量
         final long maxOffsetPy = this.commitLog.getMaxOffset();
 
         // 根据主题名称和队列ID获取消息消费队列
@@ -548,6 +548,7 @@ public class DefaultMessageStore implements MessageStore {
                         status = GetMessageStatus.NO_MATCHED_MESSAGE;
 
                         long nextPhyFileStartOffset = Long.MIN_VALUE;
+                        // 此次拉取消息最大偏移量
                         long maxPhyOffsetPulling = 0;
 
                         int i = 0;
@@ -630,9 +631,15 @@ public class DefaultMessageStore implements MessageStore {
                         // 计算下一次待查找的队列偏移量
                         nextBeginOffset = offset + (i / ConsumeQueue.CQ_STORE_UNIT_SIZE);
 
+                        // 当前未被拉取到消息消费端的消息长度
                         long diff = maxOffsetPy - maxPhyOffsetPulling;
+                        // TOTAL_PHYSICAL_MEMORY_SIZE : RocketMQ 所在服务器总内存大小
+                        // accessMessageInMemoryMaxRatio : RocketMQ 所能使用的最大内存比例,超过该内存,消息将被置换出内存
+                        // memory : 表示 RocketMQ 消息常驻内存的大小,超过该大小,RocketMQ 会将旧的消息置换回磁盘
                         long memory = (long) (StoreUtil.TOTAL_PHYSICAL_MEMORY_SIZE
                             * (this.messageStoreConfig.getAccessMessageInMemoryMaxRatio() / 100.0));
+                        // diff > memory 表示当前需要拉取的消息已经超出了常驻内存的大小
+                        // 表示主服务器繁忙,此时才建议从从服务器拉取
                         getResult.setSuggestPullingFromSlave(diff > memory);
                     } finally {
 
